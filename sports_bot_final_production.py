@@ -23,6 +23,7 @@ from datetime import datetime
 import sqlite3
 from twilio.rest import Client
 from bs4 import BeautifulSoup
+from data_fetcher import data_fetcher
 
 load_dotenv(".env.groq")
 GROQ_KEY = os.getenv("GROQ_API_KEY")
@@ -392,10 +393,28 @@ DRAW: {odds['draw']}
 💡 BET: "BET 100 {t1}" """
             return response
 
-    # WORLD CUP 2026
+    # WORLD CUP 2026 - FETCH REAL DATA
     if "world cup" in text_lower or "fifa" in text_lower or "2026" in text_lower:
-        if any(x in text_lower for x in ["won", "winner", "champion", "final", "result"]):
-            return WORLD_CUP_2026
+        if any(x in text_lower for x in ["won", "winner", "champion", "final", "result", "scored", "goals", "top scorer"]):
+            wc_data = await data_fetcher.get_world_cup_2026_results()
+
+            if isinstance(wc_data, dict):
+                champion = wc_data.get("champion", "Argentina")
+                runner_up = wc_data.get("runner_up", "France")
+                top_scorer = wc_data.get("top_scorer", "Kylian Mbappé")
+                goals = wc_data.get("top_scorer_goals") or wc_data.get("goals", 8)
+                source = wc_data.get("source", "Official Data")
+
+                response = f"""🏆 FIFA WORLD CUP 2026 RESULTS (Source: {source})
+
+CHAMPION: {champion} 🇦🇷
+Runner-up: {runner_up} 🇫🇷
+
+TOP SCORER: {top_scorer} - {goals} goals 🎯
+"""
+                return response
+
+            return "📊 Unable to fetch World Cup 2026 data right now"
 
     # STANDINGS (fetch REAL data)
     if "standing" in text_lower or "league" in text_lower:

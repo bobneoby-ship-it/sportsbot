@@ -393,41 +393,119 @@ DRAW: {odds['draw']}
 💡 BET: "BET 100 {t1}" """
             return response
 
-    # WORLD CUP 2026 - FETCH REAL DATA
+    # WORLD CUP 2026 - FETCH REAL DATA FROM WIKIPEDIA/ESPN
     if "world cup" in text_lower or "fifa" in text_lower or "2026" in text_lower:
-        if any(x in text_lower for x in ["won", "winner", "champion", "final", "result", "scored", "goals", "top scorer"]):
-            wc_data = await data_fetcher.get_world_cup_2026_results()
+        # Search for World Cup match or tournament info
+        wiki_data = await data_fetcher.search_wikipedia_match("", "", "2026 FIFA World Cup")
 
-            if isinstance(wc_data, dict):
-                champion = wc_data.get("champion", "Spain")
-                runner_up = wc_data.get("runner_up", "Argentina")
-                final_score = wc_data.get("final_score", "1-0")
-                goal_scorer = wc_data.get("winning_goal_scorer", "Ferran Torres")
-                goal_minute = wc_data.get("winning_goal_minute", "106th minute")
-                venue = wc_data.get("venue", "MetLife Stadium")
-                date = wc_data.get("date", "July 19, 2026")
-                top_scorer = wc_data.get("top_scorer", "Mbappé")
-                goals = wc_data.get("top_scorer_goals", 10)
-                source = wc_data.get("source", "Official Sources")
+        if wiki_data and wiki_data.get("content"):
+            # Use Groq to extract World Cup information
+            prompt = f"""
+From this World Cup 2026 data, find:
+1. Tournament Winner
+2. Runner-up (Final loser)
+3. Final Score
+4. Top Scorer (Golden Boot winner)
+5. Top Scorer's Goal Count
+6. Final Match Details
 
-                response = f"""🏆 FIFA WORLD CUP 2026 - FINAL RESULTS
+DATA: {wiki_data.get("content", "")[:2000]}
 
-CHAMPION: Spain {champion} 🇪🇸
-Runner-up: {runner_up} 🇦🇷
-Final Score: {final_score}
-
-FINAL MATCH DETAILS:
-• Goal Scorer: {goal_scorer} ({goal_minute} extra time)
-• Venue: {venue}
-• Date: {date}
-
-TOP SCORER: {top_scorer} - {goals} goals 🎯
-
-Source: {source}
+Return JSON with: winner, runner_up, final_score, top_scorer, top_scorer_goals, final_details
 """
-                return response
+            try:
+                response = groq_client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=500,
+                    temperature=0.3
+                )
 
-            return "📊 Unable to fetch World Cup 2026 data right now"
+                wc_info = response.choices[0].message.content
+
+                return f"""🏆 FIFA WORLD CUP 2026 INFORMATION
+
+📊 Data Source: Wikipedia (Real, Current Data)
+
+{wc_info}
+
+⚽ For specific match details, ask: "Who won [Team1] vs [Team2] in World Cup?"
+"""
+            except Exception as e:
+                logger.error(f"World Cup fetch error: {e}")
+                return "📊 Could not fetch World Cup data. Try asking about specific matches."
+
+    # PLAYER STATISTICS - "How many goals did [player] score?"
+    if any(x in text_lower for x in ["goals", "scored", "assists", "stats", "statistics"]):
+        # Try to extract player name
+        player_pattern = r'(?:did |does |has )(\w+)(?:\s+\w+)?(?:\s+)(?:score|scored|have|get)'
+        player_match = re.search(player_pattern, text_lower)
+
+        if player_match:
+            player_name = player_match.group(1).strip()
+            tournament = "2026 FIFA World Cup" if "world cup" in text_lower or "2026" in text_lower else ""
+
+            logger.info(f"📊 Fetching stats for {player_name}")
+
+            stats = await data_fetcher.search_player_stats(player_name, tournament)
+
+            if stats and not stats.get("error"):
+                p = stats.get("player", player_name)
+                goals = stats.get("goals", "Unknown")
+                assists = stats.get("assists", "N/A")
+                matches = stats.get("matches", "Unknown")
+
+                return f"""📊 PLAYER STATISTICS
+
+Player: {p}
+Tournament: {stats.get("tournament", "World Cup 2026")}
+
+⚽ Goals: {goals}
+🤝 Assists: {assists}
+🎮 Matches: {matches}
+
+📍 Source: Real Data (Wikipedia/ESPN)
+"""
+
+    # SPECIFIC MATCH RESULTS - "Who won X vs Y?"
+    match_pattern = r'(?:who won|who won|match|result|score|beat|defeated).+?(\w+)\s+(?:vs|v\.?|against)\s+(\w+)'
+    match_search = re.search(match_pattern, text_lower, re.IGNORECASE)
+    if match_search:
+        team1 = match_search.group(1).strip()
+        team2 = match_search.group(2).strip()
+        tournament = ""
+
+        # Extract tournament name if present
+        if "world cup" in text_lower or "2026" in text_lower:
+            tournament = "2026 FIFA World Cup"
+        elif "quarterfinal" in text_lower or "semi" in text_lower or "final" in text_lower:
+            tournament = text_lower.split("in")[-1].strip() if " in " in text_lower else ""
+
+        logger.info(f"🔍 Searching match: {team1} vs {team2} ({tournament})")
+
+        match_result = await data_fetcher.get_match_result(team1, team2, tournament)
+
+        if match_result and not match_result.get("error"):
+            source = match_result.get("source", "Unknown")
+            t1 = match_result.get("team1", team1)
+            t2 = match_result.get("team2", team2)
+            score = match_result.get("score", "Unknown")
+            goal_scorers = match_result.get("goal_scorers", [])
+            date = match_result.get("date", "")
+
+            goals_text = ""
+            if goal_scorers:
+                goals_text = f"⚽ Goals: {', '.join(goal_scorers)}\n"
+
+            return f"""⚽ MATCH RESULT
+
+{t1.upper()} vs {t2.upper()}
+📊 Score: {score}
+{goals_text}📅 Date: {date}
+📍 Source: {source}
+"""
+
+        return f"❌ Could not find match result for {team1} vs {team2}. Try asking: 'Who won Spain vs Argentina final 2026?'"
 
     # STANDINGS (fetch REAL data)
     if "standing" in text_lower or "league" in text_lower:

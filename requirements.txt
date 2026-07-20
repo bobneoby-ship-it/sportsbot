@@ -5,3 +5,5 @@ httpx==0.25.2
 beautifulsoup4==4.12.2
 groq==0.4.2
 python-dotenv==1.0.0
+twilio==8.10.0
+pycryptodome==3.19.0

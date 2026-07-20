@@ -21,6 +21,7 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 from datetime import datetime
 import sqlite3
+from twilio.rest import Client
 
 load_dotenv(".env.groq")
 GROQ_KEY = os.getenv("GROQ_API_KEY")
@@ -30,6 +31,15 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 groq_client = Groq(api_key=GROQ_KEY)
+
+# ============================================================================
+# TWILIO WHATSAPP CONFIG
+# ============================================================================
+
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER", "whatsapp:+14155238886")
+twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
 # ============================================================================
 # AUTO BET API CONFIG - REAL PRODUCTION CREDENTIALS
@@ -313,33 +323,28 @@ Ask me about:
 English & Chinese supported! 🌍"""
 
 # ============================================================================
-# WATI WHATSAPP
+# TWILIO WHATSAPP
 # ============================================================================
 
-async def send_wati_response(phone: str, message: str):
+def send_twilio_response(phone: str, message: str):
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            url = f"https://eu-api.wati.io/api/v1/sendSessionMessage/{phone}"
-            data = {"messageText": message}
-            response = await client.post(url, data=data)
-            return response.status_code in [200, 201]
-    except:
+        twilio_client.messages.create(
+            from_=TWILIO_WHATSAPP_NUMBER,
+            body=message,
+            to=f"whatsapp:{phone}"
+        )
+        logger.info(f"✅ Response sent to {phone}")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Twilio send error: {e}")
         return False
 
-@app.post("/wati")
-async def wati_webhook(request: Request, background_tasks: BackgroundTasks):
+@app.post("/twilio")
+async def twilio_webhook(request: Request, background_tasks: BackgroundTasks):
     try:
-        body = await request.json()
-        logger.info(f"📨 Message received")
-
-        if "messages" not in body or not body["messages"]:
-            return {"status": "ok"}
-
-        msg = body["messages"][0]
-        phone = msg.get("waId") or msg.get("from") or ""
-        text = msg.get("text") or ""
-
-        phone = phone.replace("@c.us", "").replace("+", "").strip()
+        form_data = await request.form()
+        phone = form_data.get('From', '').replace('whatsapp:', '')
+        text = form_data.get('Body', '')
 
         if not phone or not text:
             return {"status": "ok"}
@@ -349,7 +354,7 @@ async def wati_webhook(request: Request, background_tasks: BackgroundTasks):
         response = process_message(text, phone)
         logger.info(f"✅ Response ready")
 
-        background_tasks.add_task(send_wati_response, phone, response)
+        background_tasks.add_task(send_twilio_response, phone, response)
 
         return {"status": "ok"}
 

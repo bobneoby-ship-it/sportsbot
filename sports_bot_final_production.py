@@ -406,8 +406,8 @@ DRAW: {odds['draw']}
                 goal_minute = wc_data.get("winning_goal_minute", "106th minute")
                 venue = wc_data.get("venue", "MetLife Stadium")
                 date = wc_data.get("date", "July 19, 2026")
-                top_scorer = wc_data.get("top_scorer", "Kylian Mbappé")
-                goals = wc_data.get("top_scorer_goals", 8)
+                top_scorer = wc_data.get("top_scorer", "Mbappé")
+                goals = wc_data.get("top_scorer_goals", 10)
                 source = wc_data.get("source", "Official Sources")
 
                 response = f"""🏆 FIFA WORLD CUP 2026 - FINAL RESULTS

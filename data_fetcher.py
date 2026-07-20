@@ -29,8 +29,8 @@ class SportsDataFetcher:
             "winning_goal_minute": "106th minute (extra time)",
             "venue": "MetLife Stadium (New York/New Jersey)",
             "date": "July 19, 2026",
-            "top_scorer": "Kylian Mbappé",
-            "top_scorer_goals": 8,
+            "top_scorer": "Mbappé",
+            "top_scorer_goals": 10,
             "top_scorer_country": "France"
         }
 

@@ -263,7 +263,7 @@ def calculate_odds(team1: str, team2: str) -> Dict:
     }
 
 # ============================================================================
-# MESSAGE PROCESSING
+# MESSAGE PROCESSING WITH GROQ AI
 # ============================================================================
 
 def process_message(text: str, phone: str) -> str:
@@ -271,7 +271,7 @@ def process_message(text: str, phone: str) -> str:
     user = user_db.get_user(phone)
     language = user["language"] if user else "en"
 
-    # PREDICTION
+    # PREDICTION (specific command)
     if any(x in text_lower for x in ["predict", "vs", "odds"]):
         match = re.search(r"(\w+)\s+vs\.?\s+(\w+)", text_lower)
         if match:
@@ -291,7 +291,7 @@ DRAW: {odds['draw']}
 💡 BET: "BET 100 {t1}" """
             return response
 
-    # STANDINGS
+    # STANDINGS (specific command)
     if "standing" in text_lower or "league" in text_lower:
         if "premiere" in text_lower or "premier" in text_lower:
             return STANDINGS["premier"]
@@ -305,7 +305,7 @@ DRAW: {odds['draw']}
             return STANDINGS["ligue_1"]
         return "📊 5 MAJOR LEAGUES:\n1. Premier League (English)\n2. La Liga (Spanish)\n3. Bundesliga (German)\n4. Serie A (Italian)\n5. Ligue 1 (French)"
 
-    # BET
+    # BET (specific command)
     if "bet" in text_lower:
         return f"""✅ BET PLACED
 Amount: 100 | Team: Argentina | Odds: 2.26
@@ -313,12 +313,39 @@ Amount: 100 | Team: Argentina | Odds: 2.26
 🔐 Encrypted transmission to Auto Bet
 ✔️ Confirmed"""
 
-    return f"""⚽ {TRANSLATIONS[language]['welcome']}
+    # USE GROQ AI FOR INTELLIGENT RESPONSES
+    try:
+        system_prompt = """You are a football expert sports betting bot. Answer questions about:
+- Football/soccer teams, players, and statistics
+- Champions League, Premier League, La Liga, Bundesliga, Serie A, Ligue 1
+- World Cup, international matches
+- Betting odds and predictions
+- Match results and standings
+
+Be concise, helpful, and knowledgeable. Keep responses under 300 characters when possible."""
+
+        message = groq_client.messages.create(
+            model="llama-3.3-70b-versatile",
+            max_tokens=300,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": text}
+            ]
+        )
+
+        ai_response = message.content[0].text
+        logger.info(f"✅ Groq response: {ai_response[:100]}")
+        return ai_response
+
+    except Exception as e:
+        logger.error(f"❌ Groq error: {e}")
+        return f"""⚽ {TRANSLATIONS[language]['welcome']}
 
 Ask me about:
 • "Team vs Team predict"
 • "League standing"
 • "BET 100 Team"
+• Or any football question!
 
 English & Chinese supported! 🌍"""
 

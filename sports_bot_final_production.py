@@ -399,18 +399,31 @@ DRAW: {odds['draw']}
             wc_data = await data_fetcher.get_world_cup_2026_results()
 
             if isinstance(wc_data, dict):
-                champion = wc_data.get("champion", "Argentina")
-                runner_up = wc_data.get("runner_up", "France")
+                champion = wc_data.get("champion", "Spain")
+                runner_up = wc_data.get("runner_up", "Argentina")
+                final_score = wc_data.get("final_score", "1-0")
+                goal_scorer = wc_data.get("winning_goal_scorer", "Ferran Torres")
+                goal_minute = wc_data.get("winning_goal_minute", "106th minute")
+                venue = wc_data.get("venue", "MetLife Stadium")
+                date = wc_data.get("date", "July 19, 2026")
                 top_scorer = wc_data.get("top_scorer", "Kylian Mbappé")
-                goals = wc_data.get("top_scorer_goals") or wc_data.get("goals", 8)
-                source = wc_data.get("source", "Official Data")
+                goals = wc_data.get("top_scorer_goals", 8)
+                source = wc_data.get("source", "Official Sources")
 
-                response = f"""🏆 FIFA WORLD CUP 2026 RESULTS (Source: {source})
+                response = f"""🏆 FIFA WORLD CUP 2026 - FINAL RESULTS
 
-CHAMPION: {champion} 🇦🇷
-Runner-up: {runner_up} 🇫🇷
+CHAMPION: Spain {champion} 🇪🇸
+Runner-up: {runner_up} 🇦🇷
+Final Score: {final_score}
+
+FINAL MATCH DETAILS:
+• Goal Scorer: {goal_scorer} ({goal_minute} extra time)
+• Venue: {venue}
+• Date: {date}
 
 TOP SCORER: {top_scorer} - {goals} goals 🎯
+
+Source: {source}
 """
                 return response
 

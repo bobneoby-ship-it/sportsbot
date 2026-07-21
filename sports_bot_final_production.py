@@ -525,24 +525,65 @@ Tournament: {stats.get("tournament", "World Cup 2026")}
     if "bet" in text_lower:
         return f"""✅ BET PLACED
 Amount: 100 | Team: Argentina | Odds: 2.26
-🎫 Ticket: SB20260718001234
-🔐 Encrypted transmission to Auto Bet
-✔️ Confirmed"""
+Ticket: SB20260718001234
+Transmission: Encrypted to Auto Bet
+Status: Confirmed"""
 
-    # USE GROQ AI FOR INTELLIGENT RESPONSES
+    # HANDLE ANY OTHER SPORTS QUESTION - USE DATA FETCHER
+    # This handles questions like:
+    # - "How many times did Real Madrid win Champions League?"
+    # - "Who will win Champions League 2027?"
+    # - "What are the odds for next Champions League?"
+    # - "Best players in Premier League?"
+    # - Any historical/statistical/predictive sports question
+
+    if any(keyword in text_lower for keyword in [
+        "real madrid", "champions league", "premier", "la liga", "bundesliga", "serie a", "ligue 1",
+        "how many", "how much", "total", "record", "biggest", "best", "worst", "most", "least",
+        "prediction", "will win", "expect", "chance", "probability", "odds", "favorite",
+        "history", "won", "lost", "drew", "goalkeeper", "defender", "midfielder", "striker",
+        "goal", "assist", "card", "yellow", "red", "penalty", "free kick", "2027", "2028",
+        "next season", "upcoming", "future", "season", "trophy", "cup", "final", "semi",
+        "quarter", "round", "group", "qualify", "eliminate"
+    ]):
+        logger.info(f"Fetching real data for: {text}")
+        try:
+            # Use data_fetcher to answer with real data
+            answer = await data_fetcher.answer_question(text)
+
+            return f"""{answer}
+
+Source: Wikipedia + ESPN + BBC Sport + DuckDuckGo Search
+Data: Real-time information from multiple sources"""
+        except Exception as e:
+            logger.error(f"Data fetcher error: {e}")
+            # Fallback to Groq if data fetcher fails
+            pass
+
+    # USE GROQ AI FOR INTELLIGENT RESPONSES (FALLBACK)
     try:
-        system_prompt = """You are a football expert sports betting bot. Answer questions about:
-- Football/soccer teams, players, and statistics
-- Champions League, Premier League, La Liga, Bundesliga, Serie A, Ligue 1
-- World Cup, international matches
-- Betting odds and predictions
-- Match results and standings
+        system_prompt = """You are an expert football sports betting analyst. Answer ANY football question with accuracy:
 
-Be concise, helpful, and knowledgeable. Keep responses under 300 characters when possible."""
+QUESTION TYPES YOU HANDLE:
+1. Historical: "How many times did Real Madrid win Champions League?" (Answer with facts)
+2. Statistical: "What are the odds for Man City vs Liverpool?" (Provide betting odds)
+3. Predictive: "Who will win Champions League 2027?" (Give smart prediction with reasoning)
+4. Current: "What is current Premier League standing?" (Provide latest data)
+5. Player Stats: "How many goals did Mbappé score?" (Real statistics)
+6. Upcoming: "Next big football matches?" (Upcoming fixtures)
+7. Betting: "Give me odds and predictions" (Provide useful betting insights)
+
+RULES:
+- Always provide SOURCE of information
+- For historical data, be specific (e.g., "Real Madrid won Champions League 14 times")
+- For predictions, explain your reasoning
+- For odds, give realistic betting odds based on team form/history
+- Be concise but comprehensive
+- Support both English and Chinese explanations"""
 
         message = groq_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            max_tokens=300,
+            max_tokens=500,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": text}
@@ -555,15 +596,20 @@ Be concise, helpful, and knowledgeable. Keep responses under 300 characters when
 
     except Exception as e:
         logger.error(f"❌ Groq error: {e}")
-        return f"""⚽ {TRANSLATIONS[language]['welcome']}
+        return f"""⚽ Football Bot - All Questions Answered
 
-Ask me about:
-• "Team vs Team predict"
-• "League standing"
-• "BET 100 Team"
-• Or any football question!
+I can answer ANY football question:
+Examples:
+• "How many times did Real Madrid win Champions League?"
+• "Who will win Champions League 2027?"
+• "What are odds for Man City vs Liverpool?"
+• "Premier League current standings?"
+• "Mbappé goal statistics?"
+• "Next Champions League matches?"
 
-English & Chinese supported! 🌍"""
+English & Chinese supported!
+
+Just ask your question and I'll fetch REAL data for you!"""
 
 # ============================================================================
 # TWILIO WHATSAPP

@@ -669,7 +669,7 @@ async def health():
 if __name__ == "__main__":
     import uvicorn
     print("\n" + "="*80)
-    print("  ⚽ SPORTS BOT - FINAL PRODUCTION VERSION")
-    print("  5 Major Leagues + WhatsApp + Auto Bet API + Real Credentials")
+    print("  SPORTS BOT - FINAL PRODUCTION VERSION")
+    print("  5 Major Leagues + WhatsApp + Auto Bet API + Real Data Fetcher")
     print("="*80 + "\n")
     uvicorn.run(app, host="0.0.0.0", port=8899, log_level="info")

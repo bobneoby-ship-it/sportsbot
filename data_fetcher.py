@@ -122,19 +122,35 @@ class SportsDataFetcher:
     async def get_answer_with_groq(self, question: str, context: str = "") -> str:
         """Use Groq to answer a question with context"""
         try:
-            prompt = f"""You are a professional football expert. Answer this question accurately:
+            prompt = f"""You are a professional football expert analyzing real tournament data.
+Your job is to extract FACTUAL information from the provided data.
 
-Question: {question}
+QUESTION: {question}
 
-{f'Context/Data: {context[:2000]}' if context else ''}
+PROVIDED DATA/CONTEXT:
+{context[:3000] if context else 'No context provided'}
 
-Provide a clear, factual answer. If you don't have reliable information, say so."""
+INSTRUCTIONS:
+1. Search the provided data for tournament results, standings, scores, team rankings
+2. Look for mentions of: Champion, Winner, 1st place, 2nd place, 3rd place, Runner-up
+3. Extract score information, dates, venues, goal scorers
+4. Look for any tables, lists, or rankings that show team positions
+5. If the data contains tournament brackets or results sections, parse them carefully
+6. Be specific with numbers and team names
+
+PROVIDE:
+- Direct factual answers based on the data provided
+- Do NOT say "I don't have information" if the data is present - extract it
+- Quote relevant parts of the data if needed
+- Be precise about rankings and scores
+
+ANSWER THE QUESTION BASED ON THE DATA PROVIDED:"""
 
             response = groq_client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                max_tokens=500
+                temperature=0.2,
+                max_tokens=800
             )
 
             return response.choices[0].message.content.strip()
@@ -179,71 +195,64 @@ Provide a clear, factual answer. If you don't have reliable information, say so.
         """
         Answer ANY football question using multi-source approach
         Priority: Wikipedia > ESPN > BBC > DuckDuckGo Search > Groq Knowledge
+        ZERO HARDCODING - All data fetched from live sources
         """
 
         logger.info(f"Answering question: {question}")
 
-        # SPECIAL HANDLING: World Cup 2026 (July 19, 2026 - REAL RESULT)
-        if "world cup" in question.lower() and "2026" in question.lower():
-            # We know from REAL Google search on July 21, 2026:
-            # Winner: Spain (defeated Argentina 1-0)
-            # Final: July 19, 2026 at MetLife Stadium
-            # Ferran Torres scored winning goal (106th minute)
-            # Top scorer: Mbappé with 10 goals
-
-            wc_answer = """FIFA WORLD CUP 2026 - OFFICIAL RESULTS
-
-CHAMPION: Spain
-Runner-up: Argentina
-Third: Brazil
-Fourth: France
-
-FINAL MATCH DETAILS:
-Score: Spain 1-0 Argentina
-Winning Goal: Ferran Torres (106th minute - extra time)
-Venue: MetLife Stadium (New York/New Jersey)
-Date: July 19, 2026
-
-TOP SCORER: Kylian Mbappé (France) - 10 goals
-
-This is confirmed data from real Google search on July 21, 2026."""
-
-            logger.info("Answered with REAL World Cup 2026 data")
-            return wc_answer
-
-        # Step 1: Try Wikipedia
+        # Step 1: Try Wikipedia (MOST RELIABLE for real data)
         wiki_content = await self.fetch_wikipedia_for_query(question)
-        if wiki_content:
+        if wiki_content and len(wiki_content) > 500:
+            logger.info(f"Fetched from Wikipedia: {len(wiki_content)} chars")
             answer = await self.get_answer_with_groq(question, wiki_content)
-            if "don't have" not in answer.lower() and "unable" not in answer.lower():
+            # If answer is good, return it
+            if answer and "no reliable information" not in answer.lower():
                 logger.info("Answered from Wikipedia + Groq")
                 return answer
 
-        # Step 2: Try ESPN
+        # Step 2: Try ESPN API
         if "standings" in question.lower() or "league" in question.lower():
             espn_data = await self.fetch_espn_data("/sports/soccer/leagues")
             if espn_data:
                 answer = await self.get_answer_with_groq(question, str(espn_data)[:2000])
-                logger.info("Answered from ESPN")
+                logger.info("Answered from ESPN API")
                 return answer
 
-        # Step 3: Try BBC Sport
+        # Step 3: Try BBC Sport scraping
         bbc_content = await self.scrape_url("https://www.bbc.com/sport/football")
-        if bbc_content:
+        if bbc_content and len(bbc_content) > 500:
+            logger.info(f"Fetched from BBC Sport: {len(bbc_content)} chars")
             answer = await self.get_answer_with_groq(question, bbc_content)
-            logger.info("Answered from BBC Sport")
-            return answer
+            if answer and "no reliable information" not in answer.lower():
+                logger.info("Answered from BBC Sport")
+                return answer
 
-        # Step 4: Try DuckDuckGo Search (FREE - no API key needed)
+        # Step 4: Try DuckDuckGo Search (FREE - no API key)
         search_results = await self.google_search(question)
-        if search_results:
+        if search_results and len(search_results) > 200:
+            logger.info(f"Fetched from DuckDuckGo: {len(search_results)} chars")
             answer = await self.get_answer_with_groq(question, search_results)
-            logger.info("Answered from DuckDuckGo Search + Groq")
-            return answer
+            if answer and "no reliable information" not in answer.lower():
+                logger.info("Answered from DuckDuckGo + Groq")
+                return answer
 
-        # Step 5: Use Groq's knowledge base alone
+        # Step 5: Use Groq's knowledge base alone (last resort)
+        logger.info("Using Groq LLM knowledge base")
         answer = await self.get_answer_with_groq(question)
-        logger.info("Answered from Groq LLM")
+
+        # If Groq can't answer either, tell user to search directly
+        if not answer or "don't have" in answer.lower() or "unable" in answer.lower():
+            return f"""I couldn't find reliable data on this through my sources (Wikipedia, ESPN, BBC Sport).
+
+SUGGESTION: Please search Google directly for the most current information.
+
+Sources I can access:
+- Wikipedia (https://www.wikipedia.org)
+- ESPN (https://www.espn.com)
+- BBC Sport (https://www.bbc.com/sport/football)
+
+Or tell me your findings and I can help analyze them!"""
+
         return answer
 
     async def get_match_result(self, team1: str, team2: str, tournament: str = "") -> Dict:

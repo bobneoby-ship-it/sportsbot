@@ -131,8 +131,8 @@ def get_user_stats(phone: str):
 
 @app.get("/")
 async def root():
-    """Serve frontend"""
-    return FileResponse("frontend.html")
+    """Serve complete dashboard frontend"""
+    return FileResponse("dashboard_complete.html")
 
 @app.post("/api/login")
 async def login(credentials: UserLogin):

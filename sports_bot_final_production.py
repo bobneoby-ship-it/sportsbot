@@ -76,6 +76,17 @@ class UserDB:
             bet_balance REAL,
             created_at TIMESTAMP
         )''')
+        c.execute('''CREATE TABLE IF NOT EXISTS bets (
+            bet_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            phone TEXT,
+            team TEXT,
+            amount REAL,
+            odds REAL,
+            status TEXT,
+            created_at TIMESTAMP,
+            result TEXT,
+            FOREIGN KEY(phone) REFERENCES users(phone)
+        )''')
         conn.commit()
         conn.close()
 
@@ -118,6 +129,47 @@ class UserDB:
             return None
         except:
             return None
+
+    def place_bet(self, phone: str, team: str, amount: float, odds: float) -> bool:
+        """Place a bet and track it"""
+        try:
+            user = self.get_user(phone)
+            if not user or user['bet_balance'] < amount:
+                return False
+
+            conn = sqlite3.connect(self.db_path)
+            c = conn.cursor()
+
+            # Deduct from balance
+            new_balance = user['bet_balance'] - amount
+            c.execute('UPDATE users SET bet_balance = ? WHERE phone = ?',
+                     (new_balance, phone))
+
+            # Record bet
+            c.execute('''INSERT INTO bets (phone, team, amount, odds, status, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?)''',
+                     (phone, team, amount, odds, 'PENDING', datetime.now()))
+
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            logger.error(f"Bet placement error: {e}")
+            return False
+
+    def get_bet_history(self, phone: str, limit: int = 10) -> list:
+        """Get bet history for user"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            c = conn.cursor()
+            c.execute('''SELECT bet_id, team, amount, odds, status, created_at
+                        FROM bets WHERE phone = ? ORDER BY created_at DESC LIMIT ?''',
+                     (phone, limit))
+            bets = c.fetchall()
+            conn.close()
+            return bets
+        except:
+            return []
 
 user_db = UserDB()
 
@@ -373,6 +425,97 @@ async def process_message(text: str, phone: str) -> str:
     user = user_db.get_user(phone)
     language = user["language"] if user else "en"
 
+    # HELP COMMAND
+    if text_lower in ["help", "menu", "?"]:
+        return f"""SPORTS BOT - COMPLETE MENU
+
+USER PROFILE:
+1. "register [name] [password]" - Create account
+2. "login [password]" - Login
+3. "balance" - Check bet balance
+4. "history" - View bet history
+5. "profile" - View your profile
+
+PREDICTIONS & ODDS:
+6. "predict Team1 vs Team2" - Get odds & prediction
+7. "odds Team1 vs Team2" - Calculate real odds
+8. "confidence Team1 vs Team2" - Confidence level
+
+MATCH RESULTS:
+9. "Who won Team1 vs Team2?" - Get match result
+10. "Score Team1 vs Team2?" - Get score
+
+STANDINGS:
+11. "Premier League standings" - PL table
+12. "La Liga standings" - Spanish league
+13. "Bundesliga standings" - German league
+14. "Serie A standings" - Italian league
+15. "Ligue 1 standings" - French league
+
+PLAYER STATS:
+16. "Goals Mbappé?" - Player statistics
+17. "Stats Ronaldo?" - Career stats
+
+BETTING:
+18. "BET 100 Team1" - Place a bet
+19. "My bets" - View active bets
+
+GENERAL:
+20. "Champions League winner 2022?" - Historical data
+21. "World Cup 2026?" - Tournament info
+
+Type any command above!"""
+
+    # REGISTRATION
+    if text_lower.startswith("register "):
+        parts = text.split()
+        if len(parts) >= 3:
+            name = parts[1]
+            password = " ".join(parts[2:])
+            if user_db.create_user(phone, name, password, language):
+                return f"""SUCCESS! Account created:
+Name: {name}
+Starting balance: 1000
+You can now place bets!
+
+Type "help" for commands."""
+            else:
+                return "Account already exists or error. Type 'login [password]' to login."
+
+    # LOGIN
+    if text_lower.startswith("login "):
+        password = text.split("login ", 1)[1]
+        if user_db.verify_user(phone, password):
+            return f"""SUCCESS! Logged in as {user['username']}
+Balance: {user['bet_balance']}
+
+Type "help" for commands."""
+        else:
+            return "Login failed. Wrong password or account not found."
+
+    # CHECK BALANCE
+    if text_lower == "balance":
+        if user:
+            return f"""Your Balance: {user['bet_balance']} USDT
+
+Account: {user['username']}
+Language: {user['language']}"""
+        return "Please register first: 'register [name] [password]'"
+
+    # VIEW PROFILE
+    if text_lower == "profile":
+        if user:
+            return f"""YOUR PROFILE
+
+Username: {user['username']}
+Phone: {phone}
+Balance: {user['bet_balance']} USDT
+Language: {user['language']}
+Created: {user['created_at']}
+
+Type "help" for commands."""
+        return "Please register first!"
+
     # PREDICTION (specific command)
     if any(x in text_lower for x in ["predict", "vs", "odds"]):
         match = re.search(r"(\w+)\s+vs\.?\s+(\w+)", text_lower)
@@ -521,13 +664,58 @@ Tournament: {stats.get("tournament", "World Cup 2026")}
             return await fetch_league_standings("ligue_1")
         return await fetch_live_matches()
 
-    # BET (specific command)
-    if "bet" in text_lower:
-        return f"""✅ BET PLACED
-Amount: 100 | Team: Argentina | Odds: 2.26
-Ticket: SB20260718001234
-Transmission: Encrypted to Auto Bet
-Status: Confirmed"""
+    # BET HISTORY
+    if text_lower in ["history", "my bets", "bets"]:
+        if not user:
+            return "Please register first: 'register [name] [password]'"
+
+        bets = user_db.get_bet_history(phone, 10)
+        if not bets:
+            return "No bets placed yet. Type 'help' to see how to place bets."
+
+        history = "YOUR BET HISTORY:\n\n"
+        total_wagered = 0
+        for bet in bets:
+            bet_id, team, amount, odds, status, created = bet
+            history += f"Bet #{bet_id}: {team}\nAmount: {amount} USDT | Odds: {odds}\nStatus: {status}\nDate: {created}\n\n"
+            total_wagered += amount
+
+        history += f"Total Wagered: {total_wagered} USDT"
+        return history
+
+    # PLACE BET
+    if text_lower.startswith("bet "):
+        if not user:
+            return "Please register first: 'register [name] [password]'"
+
+        parts = text.split()
+        if len(parts) >= 3:
+            try:
+                amount = float(parts[1])
+                team = " ".join(parts[2:])
+
+                if amount > user['bet_balance']:
+                    return f"Insufficient balance! You have {user['bet_balance']} USDT but bet is {amount}"
+
+                odds = calculate_odds(team, "ANY")
+                if user_db.place_bet(phone, team, amount, odds['odds1']):
+                    return f"""BET PLACED SUCCESSFULLY!
+
+Team: {team}
+Amount: {amount} USDT
+Odds: {odds['odds1']}
+Potential Win: {amount * odds['odds1']} USDT
+
+Bet ID: BET{phone[-4:]}{datetime.now().timestamp():.0f}
+Status: PENDING
+
+Your new balance: {user['bet_balance'] - amount} USDT"""
+                else:
+                    return "Bet placement failed. Check balance or try again."
+            except ValueError:
+                return "Format: 'BET [amount] [team]'\nExample: 'BET 100 Real Madrid'"
+        else:
+            return "Format: 'BET [amount] [team]'\nExample: 'BET 100 Manchester City'"
 
     # HANDLE ANY OTHER SPORTS QUESTION - USE DATA FETCHER
     # This handles questions like:

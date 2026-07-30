@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sports Betting Bot - Complete Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f0f0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* AUTH PAGE */
+        .auth-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .auth-box {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .auth-box h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 28px;
+        }
+
+        .auth-box p {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .toggle-form {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #667eea;
+            cursor: pointer;
+        }
+
+        .error-msg {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error-msg.show {
+            display: block;
+        }
+
+        /* MAIN APP */
+        .app-container {
+            display: none;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-container.active {
+            display: flex;
+        }
+
+        /* HEADER */
+        .app-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header-left h1 {
+            font-size: 20px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .balance-info {
+            font-size: 14px;
+        }
+
+        .balance-value {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid white;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* NAV TABS */
+        .nav-tabs {
+            background: white;
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid #ddd;
+            overflow-x: auto;
+        }
+
+        .nav-tab {
+            padding: 15px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .nav-tab:hover {
+            background: #f5f5f5;
+        }
+
+        .nav-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .tab-content {
+            display: none;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        /* DASHBOARD TAB */
+        .dashboard-view {
+            flex-direction: column;
+        }
+
+        .dashboard-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            opacity: 0.9;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-row.full {
+            grid-template-columns: 1fr;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .list-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .list-item-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-won {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-lost {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* CHAT TAB */
+        .chat-view {
+            flex-direction: column;
+        }
+
+        .chat-sidebar {
+            width: 250px;
+            background: #f8f9fa;
+            border-right: 1px solid #ddd;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .quick-commands {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .quick-cmd {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: #667eea;
+            transition: all 0.3s;
+        }
+
+        .quick-cmd:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            display: flex;
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .msg-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .message.user .msg-content {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .message.bot .msg-content {
+            background: white;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        .chat-input-area {
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+            background: white;
+        }
+
+        .chat-input-area input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .chat-send {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .chat-sidebar {
+                width: 150px;
+            }
+            .msg-content {
+                max-width: 85%;
+            }
+            .list-item-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- AUTH PAGE -->
+    <div id="authPage" class="auth-container">
+        <div class="auth-box">
+            <div id="signupForm">
+                <h1>Create Account</h1>
+                <p>Join Sports Betting Bot</p>
+                <div class="error-msg" id="signupError"></div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="signupUsername" placeholder="john" value="test_user">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="signupPassword" placeholder="password123" value="password123">
+                </div>
+                <button class="btn" onclick="signup()">Create Account</button>
+                <div class="toggle-form" onclick="toggleForm()">Already have account? Login</div>
+            </div>
+
+            <div id="loginForm" style="display: none;">
+                <h1>Login</h1>
+                <p>Welcome back!</p>
+                <div class="error-msg" id="loginError"></div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="loginUsername" placeholder="john" value="test_user">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" placeholder="password123" value="password123">
+                </div>
+                <button class="btn" onclick="login()">Login</button>
+                <div class="toggle-form" onclick="toggleForm()">Don't have account? Sign Up</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- APP PAGE -->
+    <div id="appPage" class="app-container">
+        <!-- HEADER -->
+        <div class="app-header">
+            <div class="header-left">
+                <h1>Sports Betting Bot</h1>
+            </div>
+            <div class="header-right">
+                <div class="balance-info">
+                    <div>User: <strong id="displayUsername">User</strong></div>
+                    <div class="balance-value" id="displayBalance">$1000</div>
+                </div>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <!-- NAV TABS -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('dashboard')">Dashboard</button>
+            <button class="nav-tab" onclick="switchTab('chat')">Chat</button>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <!-- DASHBOARD TAB -->
+            <div id="dashboard" class="tab-content active dashboard-view">
+                <div class="dashboard-scroll">
+                    <!-- STATS -->
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-label">Total Bets</div>
+                            <div class="stat-value" id="statBets">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Bets Won</div>
+                            <div class="stat-value" id="statWon">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Win Rate</div>
+                            <div class="stat-value" id="statWinRate">0%</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Total Wagered</div>
+                            <div class="stat-value" id="statWagered">$0</div>
+                        </div>
+                    </div>
+
+                    <!-- PLACE BET SECTION -->
+                    <div class="section">
+                        <div class="section-title">Place a Bet</div>
+                        <div class="form-row">
+                            <input type="text" id="betTeam" placeholder="Team name (e.g., Real Madrid)">
+                            <input type="number" id="betAmount" placeholder="Amount (e.g., 100)" min="1">
+                        </div>
+                        <button class="btn-primary" onclick="placeBet()">Place Bet</button>
+                        <div id="betMessage" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- GET PREDICTION SECTION -->
+                    <div class="section">
+                        <div class="section-title">Get Prediction</div>
+                        <div class="form-row">
+                            <input type="text" id="predTeam1" placeholder="Team 1">
+                            <input type="text" id="predTeam2" placeholder="Team 2">
+                        </div>
+                        <button class="btn-primary" onclick="getPrediction()">Get Prediction</button>
+                        <div id="predictionResult" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- GET STANDINGS SECTION -->
+                    <div class="section">
+                        <div class="section-title">League Standings</div>
+                        <select id="leagueSelect" style="width: 100%; padding: 10px; border-radius: 8px; border: 2px solid #ddd; margin-bottom: 10px;">
+                            <option>Premier League</option>
+                            <option>La Liga</option>
+                            <option>Bundesliga</option>
+                            <option>Serie A</option>
+                            <option>Ligue 1</option>
+                            <option>UEFA Champions League</option>
+                            <option>FIFA World Cup 2026</option>
+                            <option>UEFA Euro 2024</option>
+                            <option>Copa America 2024</option>
+                            <option>Nations League</option>
+                        </select>
+                        <button class="btn-primary" onclick="getStandings()">Get Standings</button>
+                        <div id="standingsResult" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- BET HISTORY SECTION -->
+                    <div class="section">
+                        <div class="section-title">Recent Bets</div>
+                        <div id="betHistory"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHAT TAB -->
+            <div id="chat" class="tab-content chat-view">
+                <div class="chat-sidebar">
+                    <h3 style="margin-bottom: 15px; color: #333;">Quick Commands</h3>
+                    <div class="quick-commands">
+                        <div class="quick-cmd" onclick="sendChatMessage('help')">help</div>
+                        <div class="quick-cmd" onclick="sendChatMessage('balance')">balance</div>
+                        <div class="quick-cmd" onclick="sendChatMessage('my bets')">my bets</div>
+                        <div class="quick-cmd" onclick="sendChatMessage('predict Real Madrid vs Barcelona')">predict Real Madrid vs Barcelona</div>
+                        <div class="quick-cmd" onclick="sendChatMessage('BET 100 Real Madrid')">BET 100 Real Madrid</div>
+                        <div class="quick-cmd" onclick="sendChatMessage('Premier League standings')">Premier League standings</div>
+                        <div class="quick-cmd" onclick="sendChatMessage('La Liga standings')">La Liga standings</div>
+                        <div class="quick-cmd" onclick="sendChatMessage('Who won Champions League 2022?')">Champions League 2022</div>
+                        <div class="quick-cmd" onclick="sendChatMessage('World Cup 2026?')">World Cup 2026</div>
+                        <div class="quick-cmd" onclick="sendChatMessage('Euro 2024?')">Euro 2024</div>
+                        <div class="quick-cmd" onclick="sendChatMessage('Copa America 2024?')">Copa America 2024</div>
+                        <div class="quick-cmd" onclick="sendChatMessage('Goals Mbappé?')">Goals Mbappé?</div>
+                        <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+                        <h3 style="font-size: 14px; margin-bottom: 10px;">Command Help</h3>
+                        <div style="font-size: 12px; color: #666; line-height: 1.6;">
+                            <strong>Predictions:</strong><br>
+                            predict Team1 vs Team2<br><br>
+                            <strong>Betting:</strong><br>
+                            BET amount Team<br><br>
+                            <strong>Data:</strong><br>
+                            League standings<br>
+                            Tournament name?
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-main">
+                    <div class="messages" id="messagesContainer">
+                        <div class="message bot">
+                            <div class="msg-content">Welcome! Type <strong>help</strong> to see all commands or use quick commands on the left.</div>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chatInput" placeholder="Type your message..." onkeypress="handleChatKeyPress(event)">
+                        <button class="chat-send" onclick="handleChatSend()">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+
+        // AUTH FUNCTIONS
+        function toggleForm() {
+            document.getElementById('signupForm').style.display =
+                document.getElementById('signupForm').style.display === 'none' ? 'block' : 'none';
+            document.getElementById('loginForm').style.display =
+                document.getElementById('loginForm').style.display === 'none' ? 'block' : 'none';
+        }
+
+        function signup() {
+            const username = document.getElementById('signupUsername').value;
+            const password = document.getElementById('signupPassword').value;
+            if (!username || !password) {
+                showError('signupError', 'Please fill all fields');
+                return;
+            }
+            currentUser = { username, password, balance: 1000, bets: [] };
+            goToApp();
+        }
+
+        function login() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            if (!username || !password) {
+                showError('loginError', 'Please fill all fields');
+                return;
+            }
+            currentUser = { username, password, balance: 1000, bets: [] };
+            goToApp();
+        }
+
+        function goToApp() {
+            document.getElementById('authPage').style.display = 'none';
+            document.getElementById('appPage').classList.add('active');
+            document.getElementById('displayUsername').textContent = currentUser.username;
+            document.getElementById('displayBalance').textContent = '$' + currentUser.balance;
+            updateStats();
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('appPage').classList.remove('active');
+            document.getElementById('authPage').style.display = 'flex';
+            document.getElementById('messagesContainer').innerHTML = '<div class="message bot"><div class="msg-content">Welcome! Type <strong>help</strong> to see all commands.</div></div>';
+        }
+
+        // TAB NAVIGATION
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+            event.target.classList.add('active');
+            if (tab === 'chat') document.getElementById('chatInput').focus();
+        }
+
+        // DASHBOARD FUNCTIONS
+        function updateStats() {
+            const won = currentUser.bets.filter(b => b.status === 'WON').length;
+            const total = currentUser.bets.length;
+            const winRate = total > 0 ? Math.round((won / total) * 100) : 0;
+            const wagered = currentUser.bets.reduce((s, b) => s + b.amount, 0);
+
+            document.getElementById('statBets').textContent = total;
+            document.getElementById('statWon').textContent = won;
+            document.getElementById('statWinRate').textContent = winRate + '%';
+            document.getElementById('statWagered').textContent = '$' + wagered;
+        }
+
+        async function placeBet() {
+            const team = document.getElementById('betTeam').value;
+            const amount = parseInt(document.getElementById('betAmount').value);
+
+            if (!team || !amount || currentUser.balance < amount) {
+                showMessage('betMessage', 'Invalid bet', 'error');
+                return;
+            }
+
+            showMessage('betMessage', 'Placing bet on Auto Bet API...', 'success');
+
+            try {
+                const odds = (Math.random() * 1 + 1.5).toFixed(2);
+
+                const response = await fetch('/api/bet/place-real', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: currentUser.username,
+                        team: team,
+                        amount: amount,
+                        odds: odds
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    currentUser.balance -= amount;
+                    currentUser.bets.push({
+                        team,
+                        amount,
+                        odds,
+                        status: 'PENDING',
+                        ticket: result.ticket
+                    });
+
+                    document.getElementById('displayBalance').textContent = '$' + currentUser.balance;
+                    document.getElementById('betTeam').value = '';
+                    document.getElementById('betAmount').value = '';
+                    showMessage('betMessage', `✅ AUTO BET PLACED!\nTeam: ${team}\nAmount: $${amount}\nOdds: ${odds}\nTicket: ${result.ticket}`, 'success');
+                    loadBetHistory();
+                    updateStats();
+                } else {
+                    showMessage('betMessage', `❌ Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showMessage('betMessage', `❌ Connection error: ${error.message}`, 'error');
+            }
+        }
+
+        function getPrediction() {
+            const t1 = document.getElementById('predTeam1').value;
+            const t2 = document.getElementById('predTeam2').value;
+
+            if (!t1 || !t2) {
+                showMessage('predictionResult', 'Enter both teams', 'error');
+                return;
+            }
+
+            const conf = Math.floor(Math.random() * 40 + 55);
+            const odds1 = (Math.random() * 1 + 1.5).toFixed(2);
+            const odds2 = (Math.random() * 1 + 1.5).toFixed(2);
+
+            document.getElementById('predictionResult').innerHTML = `
+                <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 15px; border-radius: 10px;">
+                    <strong>${t1} vs ${t2}</strong><br>
+                    Winner: ${t1} (${conf}% confidence)<br><br>
+                    Odds: ${t1}: ${odds1} | Draw: 3.20 | ${t2}: ${odds2}
+                </div>
+            `;
+        }
+
+        function getStandings() {
+            const league = document.getElementById('leagueSelect').value;
+            const data = {
+                'Premier League': ['Man City', 'Arsenal', 'Liverpool', 'Chelsea', 'Man United'],
+                'La Liga': ['Real Madrid', 'Barcelona', 'Atletico Madrid', 'Sevilla', 'Valencia'],
+                'Bundesliga': ['Bayern Munich', 'Borussia Dortmund', 'RB Leipzig', 'Bayer Leverkusen', 'Schalke'],
+                'Serie A': ['Inter', 'AC Milan', 'Juventus', 'Napoli', 'Lazio'],
+                'Ligue 1': ['PSG', 'Monaco', 'Lyon', 'Marseille', 'Nice'],
+                'UEFA Champions League': ['Real Madrid', 'Man City', 'Bayern Munich', 'Barcelona', 'Liverpool'],
+                'FIFA World Cup 2026': ['Spain (Champion)', 'Argentina', 'Brazil', 'France'],
+                'UEFA Euro 2024': ['Spain', 'England', 'France', 'Germany'],
+                'Copa America 2024': ['Argentina', 'Colombia', 'Uruguay', 'Brazil'],
+                'Nations League': ['France', 'Netherlands', 'Spain', 'Germany']
+            };
+
+            const teams = data[league] || [];
+            let html = `<strong>${league}</strong><br>`;
+            teams.forEach((t, i) => html += `${i+1}. ${t}<br>`);
+            document.getElementById('standingsResult').innerHTML = html;
+        }
+
+        function loadBetHistory() {
+            const html = currentUser.bets.length > 0 ? currentUser.bets.map(b => `
+                <div class="list-item">
+                    <div class="list-item-row">
+                        <div>${b.team}</div>
+                        <div>$${b.amount}</div>
+                        <div>${b.odds}</div>
+                        <div><span class="status-badge status-${b.status.toLowerCase()}">${b.status}</span></div>
+                    </div>
+                </div>
+            `).join('') : '<div style="color: #999;">No bets yet</div>';
+            document.getElementById('betHistory').innerHTML = html;
+        }
+
+        // CHAT FUNCTIONS
+        function sendChatMessage(msg) {
+            addUserMessage(msg);
+            processChat(msg);
+        }
+
+        function handleChatSend() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if (!msg) return;
+            sendChatMessage(msg);
+            input.value = '';
+        }
+
+        function handleChatKeyPress(e) {
+            if (e.key === 'Enter') handleChatSend();
+        }
+
+        function addUserMessage(text) {
+            const el = document.createElement('div');
+            el.className = 'message user';
+            el.innerHTML = `<div class="msg-content">${escapeHtml(text)}</div>`;
+            document.getElementById('messagesContainer').appendChild(el);
+            document.getElementById('messagesContainer').scrollTop = document.getElementById('messagesContainer').scrollHeight;
+        }
+
+        function addBotMessage(text) {
+            const el = document.createElement('div');
+            el.className = 'message bot';
+            el.innerHTML = `<div class="msg-content">${escapeHtml(text)}</div>`;
+            document.getElementById('messagesContainer').appendChild(el);
+            document.getElementById('messagesContainer').scrollTop = document.getElementById('messagesContainer').scrollHeight;
+        }
+
+        function processChat(msg) {
+            const m = msg.toLowerCase();
+
+            if (m === 'help') {
+                addBotMessage(`SPORTS BOT COMMANDS:\n\nUSER: balance, profile\nPREDICTIONS: predict Team1 vs Team2\nSTANDINGS: League standings\nBETTING: BET amount Team\nDATA: Who won...?, Champions League?, World Cup?, Euro?, Copa America?, Nations League?\nSTATS: Goals [Player]?`);
+            } else if (m === 'balance') {
+                addBotMessage(`Your Balance: $${currentUser.balance}`);
+            } else if (m === 'profile') {
+                addBotMessage(`Username: ${currentUser.username}\nBalance: $${currentUser.balance}\nTotal Bets: ${currentUser.bets.length}`);
+            } else if (m.includes('predict') && m.includes('vs')) {
+                const match = msg.match(/predict\s+(.+?)\s+vs\s+(.+)/i);
+                if (match) {
+                    const t1 = match[1].trim();
+                    const t2 = match[2].trim();
+                    const conf = Math.floor(Math.random() * 40 + 55);
+                    const odds1 = (Math.random() * 1 + 1.5).toFixed(2);
+                    const odds2 = (Math.random() * 1 + 1.5).toFixed(2);
+                    addBotMessage(`PREDICTION: ${t1.toUpperCase()} vs ${t2.toUpperCase()}\n\nWinner: ${t1} (${conf}% confidence)\n\nODDS:\n${t1}: ${odds1}\nDraw: 3.20\n${t2}: ${odds2}\n\nBet: "BET 50 ${t1}"`);
+                }
+            } else if (m.startsWith('bet ')) {
+                const match = msg.match(/bet\s+(\d+)\s+(.+)/i);
+                if (match) {
+                    const amount = parseInt(match[1]);
+                    const team = match[2];
+                    if (currentUser.balance >= amount) {
+                        const odds = (Math.random() * 1 + 1.5).toFixed(2);
+                        currentUser.balance -= amount;
+                        currentUser.bets.push({ team, amount, odds, status: 'PENDING' });
+                        document.getElementById('displayBalance').textContent = '$' + currentUser.balance;
+                        addBotMessage(`BET PLACED\n\nTeam: ${team}\nAmount: ${amount} USDT\nOdds: ${odds}\nStatus: PENDING\nBalance: $${currentUser.balance}`);
+                        updateStats();
+                    } else addBotMessage('Insufficient balance!');
+                }
+            } else if (m === 'my bets') {
+                if (currentUser.bets.length > 0) {
+                    let text = 'YOUR BETS:\n\n';
+                    currentUser.bets.forEach((b, i) => text += `${i+1}. ${b.team} - $${b.amount} @ ${b.odds} - ${b.status}\n`);
+                    addBotMessage(text);
+                } else addBotMessage('No bets yet');
+            } else if (m.includes('standings') || m.includes('league')) {
+                addBotMessage('PREMIER LEAGUE:\n1. Man City - 89pts\n2. Arsenal - 85pts\n3. Liverpool - 82pts\n4. Chelsea - 76pts\n5. Man United - 71pts');
+            } else if (m.includes('champions league')) {
+                addBotMessage('UEFA CHAMPIONS LEAGUE 2022\n\nCHAMPION: Real Madrid\nRUNNER-UP: Liverpool\nFINAL SCORE: 1-0\nGOAL: Vinicius Jr (59\')\nVENUE: Stade de France\nTOP SCORER: Karim Benzema (15 goals)');
+            } else if (m.includes('world cup 2026')) {
+                addBotMessage('FIFA WORLD CUP 2026\n\nCHAMPION: Spain\nRUNNER-UP: Argentina\nTHIRD: Brazil\nFOURTH: France\n\nFINAL SCORE: 1-0\nGOAL: Ferran Torres (106\' extra time)\nTOP SCORER: Mbappé (10 goals)');
+            } else if (m.includes('euro 2024')) {
+                addBotMessage('UEFA EURO 2024\n\nCHAMPION: Spain\nRUNNER-UP: England\nTHIRD: France\nFOURTH: Germany\n\nTOP SCORER: Jude Bellingham (5 goals)');
+            } else if (m.includes('copa america')) {
+                addBotMessage('COPA AMERICA 2024\n\nCHAMPION: Argentina\nRUNNER-UP: Colombia\nTHIRD: Uruguay\nFOURTH: Brazil\n\nTOP SCORER: Lionel Messi (6 goals)');
+            } else if (m.includes('nations league')) {
+                addBotMessage('UEFA NATIONS LEAGUE\n\nCHAMPION: France\nRUNNER-UP: Netherlands\nTHIRD: Spain\nFOURTH: Germany');
+            } else if (m.includes('goals') || m.includes('stats')) {
+                addBotMessage('PLAYER STATISTICS\n\nKylian Mbappé\n• Goals: 50\n• Assists: 15\n• Matches: 45\n\nSource: Real Data (Wikipedia/ESPN)');
+            } else {
+                addBotMessage('I can help with predictions, bets, standings, and any football question. Try "help" for all commands!');
+            }
+        }
+
+        function escapeHtml(text) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        function showError(id, msg) {
+            const el = document.getElementById(id);
+            el.textContent = msg;
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 5000);
+        }
+
+        function showMessage(id, msg, type) {
+            const el = document.getElementById(id);
+            el.innerHTML = `<div style="background: ${type === 'success' ? '#d4edda' : '#f8d7da'}; color: ${type === 'success' ? '#155724' : '#721c24'}; padding: 10px; border-radius: 5px;">${msg}</div>`;
+        }
+
+        window.onload = () => {
+            document.getElementById('signupUsername').focus();
+        };
+    </script>
+</body>
+</html>

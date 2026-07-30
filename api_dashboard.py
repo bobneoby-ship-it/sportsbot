@@ -131,8 +131,8 @@ def get_user_stats(phone: str):
 
 @app.get("/")
 async def root():
-    """Serve chat dashboard frontend"""
-    return FileResponse("dashboard_with_chat.html")
+    """Serve complete dashboard frontend"""
+    return FileResponse("index.html")
 
 @app.post("/api/login")
 async def login(credentials: UserLogin):
@@ -241,6 +241,38 @@ async def place_bet(bet: BetRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/bet/place-real")
+async def place_real_bet(data: dict):
+    """Place real bet on Auto Bet API"""
+    import subprocess
+    import json
+
+    try:
+        username = data.get('username')
+        team = data.get('team')
+        amount = data.get('amount')
+        odds = data.get('odds')
+
+        command = f'''python -c "
+import sys
+sys.path.insert(0, '.')
+from sports_bot_final_production import place_bet_on_system
+import asyncio
+
+result = asyncio.run(place_bet_on_system('{username}', {amount}, {odds}, '1'))
+print(json.dumps(result))
+" 2>/dev/null'''
+
+        result = subprocess.check_output(command, shell=True, text=True)
+        bet_result = json.loads(result)
+
+        if bet_result.get('success'):
+            return {"success": True, "ticket": bet_result.get('ticket')}
+        else:
+            return {"success": False, "error": bet_result.get('error', 'Unknown error')}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 @app.get("/api/health")
 async def health():
